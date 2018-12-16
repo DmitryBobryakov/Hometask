@@ -3,22 +3,31 @@ package com.netcracker.edu.db.employee.dao;
 import com.netcracker.edu.db.employee.model.Employee;
 
 import java.math.BigInteger;
+import java.security.cert.CollectionCertStoreParameters;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
 public class EmployeeDaoJdbcImpl implements EmployeeDao {
 
+	private Statement getConnectionandStatement() throws SQLException {
+		Connection con = DriverManager.getConnection(
+				"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
+		Statement stmt = con.createStatement();
+		return stmt;
+
+	}
 	public EmployeeDaoJdbcImpl() {
 		Locale.setDefault(Locale.ENGLISH);
 		try {
-			Connection con = DriverManager.getConnection(
-					"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
+			this.getConnectionandStatement();
 
 		} catch (SQLException e) {
 			System.out.println("Connection Failed! Check output console");
@@ -31,18 +40,18 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 
 		try {
 			Employee ret = new Employee();
-			Connection con = DriverManager.getConnection(
-					"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-			Statement stmt = con.createStatement();
-			ResultSet rs = stmt.executeQuery(
-					"select * from test_table where id=" + employeeId);
+
+			ResultSet rs = this.getConnectionandStatement()
+					.executeQuery(QueryConstants.selectWithId + employeeId);
+
 			if (rs.next()) {
-				ret.setId(BigInteger.valueOf(rs.getInt(1)));
-				ret.setName(rs.getString(2));
-				ret.setSurname(rs.getString(3));
-				ret.setPosition(rs.getString(4));
-				ret.setDepartmentId(rs.getLong(5));
-				ret.setSalary(rs.getInt(6));
+				ret.setId(rs.getObject("id", BigInteger.class));
+				ret.setName(rs.getObject("name", String.class));
+				ret.setSurname(rs.getObject("surname", String.class));
+				ret.setPosition(rs.getObject("position", String.class));
+				ret.setDepartmentId(
+						rs.getObject("departmentId", Integer.class));
+				ret.setSalary(rs.getObject("salary", Integer.class));
 
 				return ret;
 
@@ -62,18 +71,11 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 	public boolean addEmployee(Employee employee) {
 		try {
 
-			Connection con = DriverManager.getConnection(
-					"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-			Statement stmt = con.createStatement();
-
-			stmt.execute(
-					"insert into test_table (id, name,surname,position,departmentid,salary)"
-							+ " values (" + employee.getId() + ", '"
-							+ employee.getName() + "', '"
-							+ employee.getSurname() + "', '"
-							+ employee.getPosition() + "', '"
-							+ employee.getDepartmentId() + "', "
-							+ employee.getSalary() + ")");
+			this.getConnectionandStatement().execute(QueryConstants.insertAll
+					+ employee.getId() + ", '" + employee.getName() + "', '"
+					+ employee.getSurname() + "', '" + employee.getPosition()
+					+ "', '" + employee.getDepartmentId() + "', "
+					+ employee.getSalary() + ")");
 
 			return true;
 
@@ -89,15 +91,13 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 	public boolean updateEmployee(Employee employee) {
 		try {
 
-			Connection con = DriverManager.getConnection(
-					"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-			Statement stmt = con.createStatement();
-
-			stmt.execute("update test_table set name='" + employee.getName()
-					+ "',surname='" + employee.getSurname() + "',position='"
-					+ employee.getPosition() + "', departmentid="
-					+ employee.getDepartmentId() + ", salary="
-					+ employee.getSalary() + " where id=" + employee.getId());
+			this.getConnectionandStatement()
+					.execute(QueryConstants.updateAll + employee.getName()
+							+ "',surname='" + employee.getSurname()
+							+ "',position='" + employee.getPosition()
+							+ "', departmentid=" + employee.getDepartmentId()
+							+ ", salary=" + employee.getSalary() + " where id="
+							+ employee.getId());
 
 			return true;
 
@@ -115,11 +115,8 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 
 		try {
 
-			Connection con = DriverManager.getConnection(
-					"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-			Statement stmt = con.createStatement();
-
-			stmt.execute("delete from test_table where id=" + employee.getId());
+			this.getConnectionandStatement()
+					.execute(QueryConstants.deleteWithId + employee.getId());
 
 			return true;
 
@@ -133,19 +130,18 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 	}
 
 	public List<Employee> getEmployeesBySurname(String surname) {
-		try (Connection con = DriverManager.getConnection(
-				"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-				Statement stmt = con.createStatement();
-				ResultSet rs = stmt
-						.executeQuery("select * from test_table where surname='"
-								+ surname + "'");) {
+		try (ResultSet rs = this.getConnectionandStatement().executeQuery(
+				QueryConstants.selectWithSurname + surname + "'");) {
 			List<Employee> ret = new LinkedList<Employee>();
 
 			while (rs.next()) {
 
-				ret.add(new Employee(BigInteger.valueOf(rs.getInt(1)),
-						rs.getString(2), rs.getString(3), rs.getString(4),
-						rs.getLong(5), rs.getLong(6)));
+				ret.add(new Employee(rs.getObject("id", BigInteger.class),
+						rs.getObject("name", String.class),
+						rs.getObject("surname", String.class),
+						rs.getObject("position", String.class),
+						rs.getObject("departmentId", Integer.class),
+						rs.getObject("salary", Integer.class)));
 
 			}
 			return ret;
@@ -153,23 +149,22 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 			System.out.println("Connection Failed! Check output console");
 			e.printStackTrace();
 		}
-		return null;
+		return Collections.emptyList();
 	}
 
 	public List<Employee> getEmployeesByDepartmentId(long departmentId) {
-		try (Connection con = DriverManager.getConnection(
-				"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-				Statement stmt = con.createStatement();
-				ResultSet rs = stmt.executeQuery(
-						"select * from test_table where departmentId="
-								+ departmentId);) {
+		try (ResultSet rs = this.getConnectionandStatement().executeQuery(
+				QueryConstants.selectWithDepartment + departmentId);) {
 			List<Employee> ret = new LinkedList<Employee>();
 
 			while (rs.next()) {
 
-				ret.add(new Employee(BigInteger.valueOf(rs.getInt(1)),
-						rs.getString(2), rs.getString(3), rs.getString(4),
-						rs.getLong(5), rs.getLong(6)));
+				ret.add(new Employee(rs.getObject("id", BigInteger.class),
+						rs.getObject("name", String.class),
+						rs.getObject("surname", String.class),
+						rs.getObject("position", String.class),
+						rs.getObject("departmentId", Integer.class),
+						rs.getObject("salary", Integer.class)));
 
 			}
 			return ret;
@@ -177,24 +172,23 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 			System.out.println("Connection Failed! Check output console");
 			e.printStackTrace();
 		}
-		return null;
+		return Collections.emptyList();
 
 	}
 
 	public List<Employee> getEmployeesWithGreaterSalary(long thresholdSalary) {
-		try (Connection con = DriverManager.getConnection(
-				"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-				Statement stmt = con.createStatement();
-				ResultSet rs = stmt
-						.executeQuery("select * from test_table where salary>"
-								+ thresholdSalary);) {
+		try (ResultSet rs = this.getConnectionandStatement().executeQuery(
+				QueryConstants.selectWithGreaterSalary + thresholdSalary);) {
 			List<Employee> ret = new LinkedList<Employee>();
 
 			while (rs.next()) {
 
-				ret.add(new Employee(BigInteger.valueOf(rs.getInt(1)),
-						rs.getString(2), rs.getString(3), rs.getString(4),
-						rs.getLong(5), rs.getLong(6)));
+				ret.add(new Employee(rs.getObject("id", BigInteger.class),
+						rs.getObject("name", String.class),
+						rs.getObject("surname", String.class),
+						rs.getObject("position", String.class),
+						rs.getObject("departmentId", Integer.class),
+						rs.getObject("salary", Integer.class)));
 
 			}
 			return ret;
@@ -202,22 +196,23 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 			System.out.println("Connection Failed! Check output console");
 			e.printStackTrace();
 		}
-		return null;
+		return Collections.emptyList();
 
 	}
 
 	public List<Employee> getAllEmployees() {
-		try (Connection con = DriverManager.getConnection(
-				"jdbc:oracle:thin:@127.0.0.1:1521:XE", "HR", "steam373");
-				Statement stmt = con.createStatement();
-				ResultSet rs = stmt.executeQuery("select * from test_table");) {
+		try (ResultSet rs = this.getConnectionandStatement()
+				.executeQuery(QueryConstants.selectAll);) {
 			List<Employee> ret = new LinkedList<Employee>();
 
 			while (rs.next()) {
 
-				ret.add(new Employee(BigInteger.valueOf(rs.getInt(1)),
-						rs.getString(2), rs.getString(3), rs.getString(4),
-						rs.getLong(5), rs.getLong(6)));
+				ret.add(new Employee(rs.getObject("id", BigInteger.class),
+						rs.getObject("name", String.class),
+						rs.getObject("surname", String.class),
+						rs.getObject("position", String.class),
+						rs.getObject("departmentId", Integer.class),
+						rs.getObject("salary", Integer.class)));
 
 			}
 			return ret;
@@ -225,7 +220,7 @@ public class EmployeeDaoJdbcImpl implements EmployeeDao {
 			System.out.println("Connection Failed! Check output console");
 			e.printStackTrace();
 		}
-		return null;
+		return Collections.emptyList();
 
 	}
 }
